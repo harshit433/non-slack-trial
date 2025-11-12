@@ -26,8 +26,9 @@ def handle_app_mention(body, say, logger):
 
     # Call NoX backend
     try:
-        res = requests.post(NOX_BACKEND_URL, json={"user": user, "message": text}, timeout=10)
-        reply = res.json().get("reply", "I'm thinking...")
+        # res = requests.post(NOX_BACKEND_URL, json={"user": user, "message": text}, timeout=10)
+        # reply = res.json().get("reply", "I'm thinking...")
+        reply = "I'm thinking..."
     except Exception as e:
         logger.error(f"Error contacting backend: {e}")
         reply = "Sorry, I couldn't reach the NoX brain right now."
