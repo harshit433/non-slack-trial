@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: nox-slack-bot
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app:api --host 0.0.0.0 --port 10000"
+    envVars:
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+      - key: NOX_BACKEND_URL
+        value: "https://nox-backend.onrender.com/api/process"
