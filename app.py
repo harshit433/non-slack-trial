@@ -21,33 +21,49 @@ handler = SlackRequestHandler(slack_app)
 
 @slack_app.event("app_mention")
 def handle_app_mention(body, say, logger):
-    user = body["event"]["user"]
-    text = body["event"]["text"]
-    logger.info(f"Received mention from {user}: {text}")
-
-    # Call NoX backend
     try:
-        # res = requests.post(NOX_BACKEND_URL, json={"user": user, "message": text}, timeout=10)
-        # reply = res.json().get("reply", "I'm thinking...")
-        reply = "I'm thinking..."
-    except Exception as e:
-        logger.error(f"Error contacting backend: {e}")
-        reply = "Sorry, I couldn't reach the NoX brain right now."
+        event = body.get("event", {})
+        user = event.get("user")
+        text = event.get("text", "")
+        channel = event.get("channel")
+        
+        logger.info(f"Received mention from user {user} in channel {channel}: {text}")
 
-    say(reply)
+        # Call NoX backend
+        try:
+            # res = requests.post(NOX_BACKEND_URL, json={"user": user, "message": text}, timeout=10)
+            # reply = res.json().get("reply", "I'm thinking...")
+            reply = "I'm thinking..."
+            logger.info(f"Sending reply: {reply}")
+        except Exception as e:
+            logger.error(f"Error contacting backend: {e}")
+            reply = "Sorry, I couldn't reach the NoX brain right now."
+
+        say(reply)
+        logger.info("Reply sent successfully")
+    except Exception as e:
+        logger.error(f"Error in handle_app_mention: {e}", exc_info=True)
 
 @slack_app.event("message")
 def handle_message_events(body, logger):
     """Handle all message events (including DMs and channel messages)"""
     event = body.get("event", {})
-    logger.info(f"Received message event: {event.get('type')} from {event.get('user', 'unknown')}")
     
-    # Skip bot messages and messages that are app mentions (handled separately)
+    # Skip bot messages
     if event.get("subtype") == "bot_message":
-        logger.info("Skipping bot message")
+        logger.debug("Skipping bot message")
         return
     
-    # Only respond to direct messages (DMs) - app mentions are handled by handle_app_mention
+    # Skip messages that contain app mentions (these are handled by handle_app_mention)
+    # App mentions will have the bot's user ID in the text
+    text = event.get("text", "")
+    if "<@" in text and ">" in text:
+        logger.debug("Skipping message with app mention (handled by app_mention handler)")
+        return
+    
+    logger.info(f"Received message event from {event.get('user', 'unknown')} in channel {event.get('channel', 'unknown')}")
+    
+    # Only log direct messages (DMs) - app mentions are handled by handle_app_mention
     if event.get("channel_type") == "im":
         logger.info("Received DM, but not responding (only app mentions are handled)")
         # Uncomment below if you want to handle DMs
