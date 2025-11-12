@@ -93,7 +93,7 @@ def handle_message_events(body, say, logger):
                 logger.error(f"Error contacting backend: {e}")
                 reply = "Sorry, I couldn't reach the NoX brain right now."
             
-            say(reply)
+            say(reply, thread_ts = event.get("thread_ts") or event.get("ts"))
             logger.info("DM reply sent successfully")
             return
         
