@@ -3,6 +3,21 @@ from slack_bolt.adapter.fastapi import SlackRequestHandler
 from fastapi import FastAPI, Request
 import requests, os
 import logging
+import sys
+
+# Configure root logger
+logging.basicConfig(
+    level=logging.INFO,  # Or DEBUG for more details
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger("myapp")
+logger.setLevel(logging.INFO)
+
+logger.info("Logger initialized!")
 
 # Load from environment
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
@@ -33,7 +48,7 @@ def handle_app_mention(body, say, logger):
         try:
             # res = requests.post(NOX_BACKEND_URL, json={"user": user, "message": text}, timeout=10)
             # reply = res.json().get("reply", "I'm thinking...")
-            reply = "I'm thinking..."
+            reply = "You said: " + text
             logger.info(f"Sending reply: {reply}")
         except Exception as e:
             logger.error(f"Error contacting backend: {e}")
@@ -72,7 +87,7 @@ def handle_message_events(body, say, logger):
             try:
                 # res = requests.post(NOX_BACKEND_URL, json={"user": user, "message": text}, timeout=10)
                 # reply = res.json().get("reply", "I'm thinking...")
-                reply = "I'm thinking..."
+                reply = "You said: " + event.get("text", "I'm thinking...")
                 logger.info(f"Sending reply to DM: {reply}")
             except Exception as e:
                 logger.error(f"Error contacting backend: {e}")
