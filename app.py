@@ -89,7 +89,37 @@ def handle_message_events(body, say, logger):
             return
         
         logger.info(f"Received DM from user {user_id}: {text[:50]}... (thread_ts: {thread_ts})")
-        
+
+        does_user_exist = requests.get(f"https://nox-backend.onrender.com/api/user/{user_id}").json()
+        if not does_user_exist:
+            logger.warning(f"User {user_id} does not exist")
+            say(blocks=[
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"Hey there! It looks like you're new here. I'm Nox, your AI assistant. Let's get you started."
+                    }
+                },
+                {
+                    "type": "context",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"Create an account with me to get started."
+                    }
+                },
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": "Create Account",
+                            "url": f"https://nox.stremly.in/"
+                        }
+                    ]
+                }
+            ], thread_ts=thread_ts)
+            return
         # Determine if this is a new message or a reply
         if thread_ts is None:
             # New message - create new thread
@@ -139,6 +169,288 @@ def handle_message_events(body, say, logger):
         
     except Exception as e:
         logger.error(f"Error in handle_message_events: {e}", exc_info=True)
+
+
+def get_user_info(user_id: str):
+    """Get user information from Slack"""
+    try:
+        user_info = slack_app.client.users_info(user=user_id)
+        if user_info["ok"]:
+            return user_info["user"]
+        return None
+    except Exception as e:
+        logger.error(f"Error getting user info: {e}")
+        return None
+
+def check_user_exists(user_id: str) -> bool:
+    """Check if user exists in backend"""
+    try:
+        response = requests.get(f"https://nox-backend.onrender.com/api/user/{user_id}", timeout=5)
+        if response.status_code == 200:
+            user_data = response.json()
+            return user_data.get("exists", False) if isinstance(user_data, dict) else bool(user_data)
+        return False
+    except Exception as e:
+        logger.error(f"Error checking user existence: {e}")
+        return False
+
+def create_app_home_blocks(user_id: str, user_name: str, is_logged_in: bool):
+    """Create Block Kit blocks for App Home page"""
+    
+    if not is_logged_in:
+        # Not logged in - First time user
+        return [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": "👋 Welcome to NOX!",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Hey there!*\n\nWe're meeting for the first time! I'm *NOX*, your intelligent AI assistant. I'm here to help you with a wide range of tasks and make your work easier.\n\n*Let me get to know you better* so I can provide personalized assistance tailored just for you."
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*🌟 What is NOX?*\n\nNOX is your intelligent AI assistant powered by cutting-edge technology. I can help you with:\n\n• 📊 *Data Analysis* - Get insights from your data\n• 💬 *Conversational AI* - Chat naturally about anything\n• 🔍 *Information Retrieval* - Find answers quickly\n• 📝 *Content Creation* - Generate and refine content\n• 🚀 *Task Automation* - Streamline your workflow\n• 📚 *Knowledge Management* - Organize and access information"
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*✨ What I Can Do For You*\n\n• *Smart Conversations* - Have natural, context-aware discussions\n• *Quick Responses* - Get instant answers to your questions\n• *Task Management* - Help organize and track your work\n• *Learning & Growth* - Continuously improve to serve you better\n• *24/7 Availability* - Always here when you need me"
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*🎯 Ready to Get Started?*\n\nCreate your account now and let's begin our journey together!"
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "🚀 Create Account",
+                            "emoji": True
+                        },
+                        "style": "primary",
+                        "url": "https://nox.stremly.in/",
+                        "action_id": "create_account"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "💬 Start Chat",
+                            "emoji": True
+                        },
+                        "action_id": "start_chat_dm"
+                    }
+                ]
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "💡 *Tip:* Once you create an account, you'll unlock all features and personalized assistance!"
+                    }
+                ]
+            }
+        ]
+    else:
+        # Logged in user
+        return [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"👋 Hey, {user_name}!",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*How's it going today?* Need my help? 😊\n\nI'm here and ready to assist you with whatever you need!"
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*🌟 What is NOX?*\n\nNOX is your intelligent AI assistant powered by cutting-edge technology. I'm designed to help you work smarter and faster."
+                }
+            },
+            {
+                "type": "section",
+                "fields": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "*📊 Data Analysis*\nGet insights from your data"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": "*💬 Conversational AI*\nChat naturally about anything"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": "*🔍 Information Retrieval*\nFind answers quickly"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": "*📝 Content Creation*\nGenerate and refine content"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": "*🚀 Task Automation*\nStreamline your workflow"
+                    },
+                    {
+                        "type": "mrkdwn",
+                        "text": "*📚 Knowledge Management*\nOrganize and access info"
+                    }
+                ]
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*✨ What I Can Do For You*\n\n• *Smart Conversations* - Have natural, context-aware discussions with me\n• *Quick Responses* - Get instant answers to your questions\n• *Task Management* - Help organize and track your work efficiently\n• *Learning & Growth* - I continuously improve to serve you better\n• *24/7 Availability* - Always here when you need assistance\n• *Thread Management* - Keep organized conversations in threads"
+                }
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*🚀 Quick Actions*"
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "💬 Start New Chat",
+                            "emoji": True
+                        },
+                        "style": "primary",
+                        "action_id": "start_chat_dm"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "📊 View Dashboard",
+                            "emoji": True
+                        },
+                        "url": "https://nox.stremly.in/dashboard",
+                        "action_id": "view_dashboard"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "⚙️ Settings",
+                            "emoji": True
+                        },
+                        "url": "https://nox.stremly.in/settings",
+                        "action_id": "view_settings"
+                    }
+                ]
+            },
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "💡 *Tip:* Send me a direct message to start a conversation! I'll create a thread for each task to keep things organized."
+                    }
+                ]
+            }
+        ]
+
+@slack_app.event("app_home_opened")
+def handle_app_home_opened(client, event, logger):
+    """Handle app home opened event - Update App Home tab"""
+    try:
+        user_id = event.get("user")
+        logger.info(f"App home opened by user {user_id}")
+        
+        # Get user info from Slack
+        user_info = get_user_info(user_id)
+        user_name = user_info.get("real_name", user_info.get("name", "there")) if user_info else "there"
+        
+        # Check if user is logged in
+        is_logged_in = check_user_exists(user_id)
+        
+        # Create blocks
+        blocks = create_app_home_blocks(user_id, user_name, is_logged_in)
+        
+        # Publish the App Home view
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+        
+        logger.info(f"App Home updated for user {user_id} (logged_in: {is_logged_in})")
+        
+    except Exception as e:
+        logger.error(f"Error in handle_app_home_opened: {e}", exc_info=True)
+
+@slack_app.action("start_chat_dm")
+def handle_start_chat_dm(ack, body, client, logger):
+    """Handle start chat button - opens DM with bot"""
+    ack()
+    try:
+        user_id = body["user"]["id"]
+        # Open DM with the bot
+        conversation = client.conversations_open(users=[user_id])
+        if conversation["ok"]:
+            channel_id = conversation["channel"]["id"]
+            client.chat_postMessage(
+                channel=channel_id,
+                text="Hey! 👋 Ready to chat? Just send me a message and I'll help you out!"
+            )
+            logger.info(f"Opened DM for user {user_id}")
+    except Exception as e:
+        logger.error(f"Error opening DM: {e}", exc_info=True)
 
 # Request model for backend to send messages
 class BackendSendMessage(BaseModel):
@@ -242,6 +554,44 @@ async def backend_send_message(request: BackendSendMessage):
         raise
     except Exception as e:
         logger.error(f"Error sending message from backend: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+# Endpoint to refresh App Home page
+@api.post("/refresh-app-home/{user_id}")
+async def refresh_app_home(user_id: str):
+    """Manually refresh the App Home page for a user"""
+    try:
+        # Get user info from Slack
+        user_info = get_user_info(user_id)
+        user_name = user_info.get("real_name", user_info.get("name", "there")) if user_info else "there"
+        
+        # Check if user is logged in
+        is_logged_in = check_user_exists(user_id)
+        
+        # Create blocks
+        blocks = create_app_home_blocks(user_id, user_name, is_logged_in)
+        
+        # Publish the App Home view
+        response = slack_app.client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+        
+        if response["ok"]:
+            return {
+                "status": "success",
+                "message": "App Home refreshed successfully",
+                "user_name": user_name,
+                "is_logged_in": is_logged_in
+            }
+        else:
+            raise HTTPException(status_code=400, detail=response.get("error", "Failed to refresh App Home"))
+            
+    except Exception as e:
+        logger.error(f"Error refreshing App Home: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # Endpoint to get thread info (for debugging/monitoring)
