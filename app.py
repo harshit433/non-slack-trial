@@ -179,7 +179,7 @@ def get_user_info(user_id: str):
             return user_info["user"]
         return None
     except Exception as e:
-        logger.error(f"Error getting user info: {e}")
+        logger.error(f"Got an error while getting user info: {e}")
         return None
 
 def check_user_exists(user_id: str) -> bool:
